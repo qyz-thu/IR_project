@@ -14,18 +14,6 @@ def init():
     return render_template('home.html')
 
 
-# @app.route('/insert_data')
-# def insert_data():
-#
-#     body = {
-#         'body': "人民日报爱人民"
-#     }
-#
-#     result = es.index(index='contents', body=body)
-#
-#     return jsonify(result)
-
-
 @app.route('/search')
 def search():
     keywords1 = request.args.get('keywords1')
@@ -38,33 +26,94 @@ def search():
     text = keywords1 + ' ' + keywords2 + ' ' + keywords3
     query = {'query': {'match': {'raw': text}}}
 
-    res = es.search(index="docs", size=1000, body=query, request_timeout=20)
+    res = es.search(index="docs", size=100, body=query, request_timeout=20)
 
     keyword = []
     properties = []
     if keywords1 != '':
         keyword.append(keywords1)
-        properties.append(property1)
+        properties.append('' if property1 == 'd' else property1)
     if keywords2 != '':
         keyword.append(keywords2)
-        properties.append(property2)
+        properties.append('' if property2 == 'd' else property2)
     if keywords3 != '':
         keyword.append(keywords3)
-        properties.append(property3)
+        properties.append('' if property3 == 'd' else property3)
     restriction = request.args.get('restriction')
 
     return filter_result(res['hits']['hits'], keyword, properties, restriction)
 
 
 def filter_result(result, keyword, property, restriction):
+    final_result = []
+    assert len(keyword) == len(property)
     for res in result:
         segmented_text = res['_source']['segmented']
-        pattern = re.compile('(.+?)_([a-z]+?)')
+        segmented_text = re.sub('_n[psiz]', '_n', segmented_text)
+        text = ' ' + segmented_text
+        pattern = re.compile('([^\s]+?)_([a-z]+?)')
         words = pattern.findall(segmented_text)
-        index = 0
+        if restriction == '0':    # no restriction
+            targets = [' ' + keyword[i] + '_' + property[i] for i in range(len(keyword))]
+            ok = True
+            for target in targets:
+                if text.find(target) == -1:
+                    ok = False
+                    break
+            if ok:
+                final_result.append(res)
+        elif restriction == '1':  # neighboring
+            match_position = [[] for _ in range(len(keyword))]
+            for i, w in enumerate(words):
+                for j, k in enumerate(keyword):
+                    if k == w[0] and (property[j] == w[1] or property[j] == ''):
+                        match_position[j].append(i)
+            if len(keyword) == 1:
+                if len(match_position[0]) > 0:
+                    final_result.append(res)
+            elif len(keyword) == 2:
+                for x in match_position[0]:
+                    if (x+1) in match_position[1] or (x-1) in match_position[1]:
+                        final_result.append(res)
+                        break
+            elif len(keyword) == 3:
+                for x in match_position[0]:
+                    if ((x-1) in match_position[1] and (x-2) in match_position[2]) or ((x-2) in match_position[1] and (x-1) in match_position[2])\
+                    or ((x-1) in match_position[1] and (x+1) in match_position[2]) or ((x+1) in match_position[1] and (x-1) in match_position[2])\
+                    or ((x+1) in match_position[1] and (x+2) in match_position[2]) or ((x+1) in match_position[1] and (x+2) in match_position[2]):
+                        final_result.append(res)
+                        break
+        elif restriction == '2':  # ordered
+            index = 0
+            for word in words:
+                if keyword[index] == word[0] and (property[index] == '' or property[index] == word[1]):
+                    index += 1
+                if index == len(keyword):
+                    final_result.append(res)
+                    break
+        elif restriction == '3':  # ordered and neighboring
+            match_position = [[] for _ in range(len(keyword))]
+            for i, w in enumerate(words):
+                for j, k in enumerate(keyword):
+                    if k == w[0] and (property[j] == w[1] or property[j] == ''):
+                        match_position[j].append(i)
+            if len(keyword) == 1:
+                if len(match_position[0]) > 0:
+                    final_result.append(res)
+            elif len(keyword) == 2:
+                for x in match_position[0]:
+                    if (x + 1) in match_position[1]:
+                        final_result.append(res)
+                        break
+            elif len(keyword) == 3:
+                for x in match_position[0]:
+                    if (x + 1) in match_position[1] and (x + 2) in match_position[2]:
+                        final_result.append(res)
+                        break
+        if len(final_result) >= 10:
+            break
 
-
-    return {1:'hello'}
+    return jsonify(final_result)
 
 
 app.run(port=5000, debug=True)
