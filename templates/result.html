@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+<head>
+    <title>搜索结果</title>
+</head>
+<body style="background-size: 100%">
+
+<form action="/" method="get" style="text-align: center; margin-top: 40px">
+	<b style="font-size: 25px">搜 索 结 果</b><br><br>
+	<button>返回</button>
+</form>
+
+<div id="main" style="margin-top: 30px">
+    <div id="content" style="">
+        {% for result in results %}
+        <p><li>{{ result }}</li></p>
+        {% endfor %}
+    </div>
+</div>
+共搜索到{{total_num}}条结果，显示得分最高的{{results | length}}条
+
+</body>
+</html>
