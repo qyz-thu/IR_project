@@ -1,4 +1,4 @@
-from datetime import datetime
+import time
 from flask import Flask, jsonify, request, render_template
 from elasticsearch import Elasticsearch
 import re
@@ -16,6 +16,8 @@ def init():
 
 @app.route('/search')
 def search():
+    start_time = time.time()
+    # get input from user
     keywords1 = request.args.get('keywords1')
     keywords2 = request.args.get('keywords2')
     keywords3 = request.args.get('keywords3')
@@ -32,7 +34,7 @@ def search():
     properties = []
     if keywords1 != '':
         keyword.append(keywords1)
-        properties.append('' if property1 == 'o' else property1)
+        properties.append('' if property1 == 'o' else property1)    # deal with 'others' property
     if keywords2 != '':
         keyword.append(keywords2)
         properties.append('' if property2 == 'o' else property2)
@@ -41,10 +43,13 @@ def search():
         properties.append('' if property3 == 'o' else property3)
     restriction = request.args.get('restriction')
 
-    return filter_result(res['hits']['hits'], keyword, properties, restriction)
+    return filter_result(res['hits']['hits'], keyword, properties, restriction, start_time)
 
 
-def filter_result(result, keyword, property, restriction):
+def filter_result(result, keyword, property, restriction, start_time):
+    """
+    filter the results from Elasticsearch according to user input
+    """
     final_result = []
     assert len(keyword) == len(property)
     for res in result:
@@ -111,10 +116,9 @@ def filter_result(result, keyword, property, restriction):
                     if (x + 1) in match_position[1] and (x + 2) in match_position[2]:
                         final_result.append(text)
                         break
-        # if len(final_result) >= 20:
-        #     break
 
-    return render_template('result.html', results=final_result[:20], total_num=len(final_result))
+    time_used = time.time() - start_time
+    return render_template('result.html', results=final_result[:20], total_num=len(final_result), time=time_used)
 
 
 app.run(port=5000, debug=True)

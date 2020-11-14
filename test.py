@@ -1,15 +1,20 @@
 from elasticsearch import Elasticsearch, helpers
 import time
-
 es = Elasticsearch()
 
 
 def delete_all():
+    """
+    delete all documents
+    """
     query = {'query': {'match_all': {}}}
     es.delete_by_query(index='docs', size=1000, body=query)
 
 
 def add_document(interval=100000):
+    """
+    add documents to Elasticsearch index using bulk
+    """
     index = 0
     stored = 0
     start_time = time.time()
@@ -38,5 +43,6 @@ def add_document(interval=100000):
                 print('time used %.2f s' % (time.time() - start_time))
 
 
-# delete_all()
-# add_document(200000)
+if __name__ == "__main__":
+    # delete_all()
+    add_document(500000)
