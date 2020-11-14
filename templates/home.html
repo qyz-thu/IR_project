@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+    <div class="input" style="text-align: center; margin-top: 100px">
+    <form action="/search" method="get">
+        <p>
+        <input type="text" name="keywords1">
+        <select name="property1">
+  			<option value ="v">动词</option>
+  			<option value ="n">名词</option>
+  			<option value="a">形容词</option>
+  			<option value="d">副词</option>
+		</select>
+        </p>
+
+        <p>
+        <input type="text" name="keywords2">
+        <select name="property2">
+  			<option value ="v">动词</option>
+  			<option value ="n">名词</option>
+  			<option value="a">形容词</option>
+  			<option value="d">副词</option>
+		</select>
+        </p>
+
+        <p>
+        <input type="text" name="keywords3">
+        <select name="property3">
+  			<option value ="v">动词</option>
+  			<option value ="n">名词</option>
+  			<option value="a">形容词</option>
+  			<option value="d">副词</option>
+        </select>
+        </p>
+
+        <select name="restriction">
+  			<option value ="0">无限制</option>
+  			<option value ="1">相邻</option>
+  			<option value="2">顺序</option>
+  			<option value="3">顺序且相邻</option>
+		</select>
+
+        <br>
+		<input type="submit" value="搜索">
+	</form>
+    </div>
+
+</body>
+</html>
