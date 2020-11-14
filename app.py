@@ -32,13 +32,13 @@ def search():
     properties = []
     if keywords1 != '':
         keyword.append(keywords1)
-        properties.append('' if property1 == 'd' else property1)
+        properties.append('' if property1 == 'o' else property1)
     if keywords2 != '':
         keyword.append(keywords2)
-        properties.append('' if property2 == 'd' else property2)
+        properties.append('' if property2 == 'o' else property2)
     if keywords3 != '':
         keyword.append(keywords3)
-        properties.append('' if property3 == 'd' else property3)
+        properties.append('' if property3 == 'o' else property3)
     restriction = request.args.get('restriction')
 
     return filter_result(res['hits']['hits'], keyword, properties, restriction)
@@ -50,18 +50,19 @@ def filter_result(result, keyword, property, restriction):
     for res in result:
         segmented_text = res['_source']['segmented']
         segmented_text = re.sub('_n[psiz]', '_n', segmented_text)
-        text = ' ' + segmented_text
+        _segmented_text = ' ' + segmented_text
+        text = res['_source']['raw']
         pattern = re.compile('([^\s]+?)_([a-z]+?)')
         words = pattern.findall(segmented_text)
         if restriction == '0':    # no restriction
             targets = [' ' + keyword[i] + '_' + property[i] for i in range(len(keyword))]
             ok = True
             for target in targets:
-                if text.find(target) == -1:
+                if _segmented_text.find(target) == -1:
                     ok = False
                     break
             if ok:
-                final_result.append(res)
+                final_result.append(text)
         elif restriction == '1':  # neighboring
             match_position = [[] for _ in range(len(keyword))]
             for i, w in enumerate(words):
@@ -70,18 +71,18 @@ def filter_result(result, keyword, property, restriction):
                         match_position[j].append(i)
             if len(keyword) == 1:
                 if len(match_position[0]) > 0:
-                    final_result.append(res)
+                    final_result.append(text)
             elif len(keyword) == 2:
                 for x in match_position[0]:
                     if (x+1) in match_position[1] or (x-1) in match_position[1]:
-                        final_result.append(res)
+                        final_result.append(text)
                         break
             elif len(keyword) == 3:
                 for x in match_position[0]:
                     if ((x-1) in match_position[1] and (x-2) in match_position[2]) or ((x-2) in match_position[1] and (x-1) in match_position[2])\
                     or ((x-1) in match_position[1] and (x+1) in match_position[2]) or ((x+1) in match_position[1] and (x-1) in match_position[2])\
                     or ((x+1) in match_position[1] and (x+2) in match_position[2]) or ((x+1) in match_position[1] and (x+2) in match_position[2]):
-                        final_result.append(res)
+                        final_result.append(text)
                         break
         elif restriction == '2':  # ordered
             index = 0
@@ -89,7 +90,7 @@ def filter_result(result, keyword, property, restriction):
                 if keyword[index] == word[0] and (property[index] == '' or property[index] == word[1]):
                     index += 1
                 if index == len(keyword):
-                    final_result.append(res)
+                    final_result.append(text)
                     break
         elif restriction == '3':  # ordered and neighboring
             match_position = [[] for _ in range(len(keyword))]
@@ -99,21 +100,21 @@ def filter_result(result, keyword, property, restriction):
                         match_position[j].append(i)
             if len(keyword) == 1:
                 if len(match_position[0]) > 0:
-                    final_result.append(res)
+                    final_result.append(text)
             elif len(keyword) == 2:
                 for x in match_position[0]:
                     if (x + 1) in match_position[1]:
-                        final_result.append(res)
+                        final_result.append(text)
                         break
             elif len(keyword) == 3:
                 for x in match_position[0]:
                     if (x + 1) in match_position[1] and (x + 2) in match_position[2]:
-                        final_result.append(res)
+                        final_result.append(text)
                         break
-        if len(final_result) >= 10:
-            break
+        # if len(final_result) >= 20:
+        #     break
 
-    return jsonify(final_result)
+    return render_template('result.html', results=final_result[:20], total_num=len(final_result))
 
 
 app.run(port=5000, debug=True)
