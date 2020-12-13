@@ -103,9 +103,12 @@ def calculate_similarity(result, terms, operators, start_time):
         words = pattern.findall(segmented_text)
         # doc_len = min(len(words), 5)
         doc_len = 0
+        word_count = dict()
         for w in words:
             if w[1] in property_set:
                 doc_len += 1
+                word_count[w[0]] = word_count[w[0]] + 1 if w[0] in word_count else 1
+        max_count = max([word_count[w] for w in word_count])
         if doc_len < 5:
             continue
         term_weight = dict()
@@ -115,7 +118,7 @@ def calculate_similarity(result, terms, operators, start_time):
             if w[0] in term_weight:
                 term_weight[w[0]] += 1
         for t in term_weight:
-            term_weight[t] = term_weight[t] / doc_len * (idfs[t] / max_idf)
+            term_weight[t] = term_weight[t] / max_count * (idfs[t] / max_idf)
         weight = np.array([term_weight[t] for t in term_weight])
         if len(weight) == 2:
             if operators[0] == 0:   # disjunctive
