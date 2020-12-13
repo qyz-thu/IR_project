@@ -82,6 +82,10 @@ def search():
 
 def calculate_similarity(result, terms, operators, start_time):
     assert len(terms) == len(operators) + 1
+    query = terms[0]
+    for i in range(len(operators)):
+        query += '∨' if operators[i] == 1 else '∧'
+        query += terms[i + 1]
     idfs = dict()
 
     final_results = []
@@ -137,7 +141,7 @@ def calculate_similarity(result, terms, operators, start_time):
     final_results.sort(key=lambda x: x[1], reverse=True)
     final_results = [x[0] for x in final_results]
     time_used = time.time() - start_time
-    return render_template('result.html', results=final_results[:20], total_num=len(final_results), time=time_used)
+    return render_template('result.html', results=final_results[:20], total_num=len(final_results), time=time_used, query=query)
 
 
 def filter_result(result, keyword, property, restriction, start_time):
