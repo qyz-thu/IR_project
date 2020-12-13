@@ -1,5 +1,5 @@
 import time
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, request, render_template
 from elasticsearch import Elasticsearch
 import re
 import json
@@ -8,9 +8,14 @@ import numpy as np
 es = Elasticsearch()
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
-
-extended_boolean_search = True
 p = 2
+property_set = {'n', 'np', 'ns', 'ni', 'nz', 'q', 'mq', 't', 'f', 's', 'v', 'a', 'd', 'h', 'k', 'i', 'j', 'r', 'c', 'e', 'g'}
+
+
+@app.route('/boolean')
+def gsearch():
+    return render_template('boolean.html')
+
 
 @app.route('/')
 def init():
@@ -21,6 +26,7 @@ def init():
 def search():
     start_time = time.time()
     # get input from user
+    extended_boolean_search = request.args.get('mode') == "True"
     if extended_boolean_search:
         term1 = request.args.get('term1')
         term2 = request.args.get('term2')
@@ -30,7 +36,7 @@ def search():
 
         text = term1 + ' ' + term2 + ' ' + term3
         query = {'query': {'match': {'raw': text}}}
-        res = es.search(index="docs", size=1000, body=query, request_timeout=20)
+        res = es.search(index="docs", size=200, body=query, request_timeout=20)
 
         terms = []
         operators = []
@@ -77,30 +83,35 @@ def search():
 def calculate_similarity(result, terms, operators, start_time):
     assert len(terms) == len(operators) + 1
     idfs = dict()
-    total_idf = 0
+
     final_results = []
     # calculate idf: assign 0.1 for OOV words
     for term in terms:
         if term in idf:
             idfs[term] = np.log10(doc_count / idf[term])
-            total_idf += idfs[term]
         else:
             idfs[term] = 0.1
-            total_idf += idfs[term]
+    max_idf = max(idfs[x] for x in idfs)
     for res in result:
         segmented_text = res['_source']['segmented']
         text = res['_source']['raw']
         pattern = re.compile('([^\s]+?)_([a-z]+?)')
         words = pattern.findall(segmented_text)
-        doc_len = len(words)
+        # doc_len = min(len(words), 5)
+        doc_len = 0
+        for w in words:
+            if w[1] in property_set:
+                doc_len += 1
+        if doc_len < 5:
+            continue
         term_weight = dict()
         for term in terms:
             term_weight[term] = 0.1
-            for w in words:
-                if w in term_weight:
-                    term_weight[term] += 1
-            for t in term_weight:
-                term_weight[t] = term_weight[t] / doc_len * (idfs[term])
+        for w in words:
+            if w[0] in term_weight:
+                term_weight[w[0]] += 1
+        for t in term_weight:
+            term_weight[t] = term_weight[t] / doc_len * (idfs[t] / max_idf)
         weight = np.array([term_weight[t] for t in term_weight])
         if len(weight) == 2:
             if operators[0] == 0:   # disjunctive
@@ -110,15 +121,15 @@ def calculate_similarity(result, terms, operators, start_time):
         elif len(weight) == 3:
             if operators[0] == 0 and operators[1] == 0:
                 similarity = 1 - np.power(sum(np.power(1 - weight, p)) / 2, 1 / p)
-            elif operators[0] == 1 and operators[1] == 0:
+            elif operators[0] == 1 and operators[1] == 1:
                 similarity = np.power(sum(np.power(weight, p)) / 2, 1 / p)
-            elif operators[0] == 0 and operators[0] == 1:
+            elif operators[0] == 0 and operators[1] == 1:
                 temp_sim = 1 - np.power(sum(np.power(1 - weight[:2], p)) / 2, 1 / p)
                 x = [temp_sim, weight[2]]
                 similarity = np.power(sum(np.power(x, p)) / 2, 1 / p)
-            elif operators[1] == 1 and operators[1] == 0:
+            elif operators[0] == 1 and operators[1] == 0:
                 temp_sim = np.power(sum(np.power(weight[:2], p)) / 2, 1 / p)
-                x = [temp_sim, weight[2]]
+                x = np.array([temp_sim, weight[2]])
                 similarity = 1 - np.power(sum(np.power(1 - x, p)) / 2, 1 / p)
         else:
             similarity = 0
