@@ -5,7 +5,12 @@
 	<title>Document</title>
 </head>
 <body>
-    <div class="input" style="text-align: center; margin-top: 100px">
+	<div style="text-align: center; margin-top: 60px">
+		<form action="/boolean">
+			<input type="submit" value="Extended Boolean Search">
+		</form>
+	</div>
+    <div class="input" style="text-align: center; margin-top: 20px">
     <form action="/search" method="get">
         <p>
         <input type="text" name="keywords1">
@@ -47,10 +52,13 @@
   			<option value="3">顺序且相邻</option>
 		</select>
 
+
         <br><br>
+		<input type="hidden" name="mode" value="False">
 		<input type="submit" value="搜索">
 	</form>
     </div>
+
     <div style="padding-left: 400px; padding-right: 400px; margin-top: 80px">
         说明：<br>
         在输入栏输入关键词，并可选择词性。在下方选择词语之间位置限制。<br>
